@@ -1,0 +1,6 @@
+{
+  "name": "OmniSLA Ticketing & Operations Suite",
+  "description": "An enterprise-grade support ticketing platform featuring SLA configurations, double-agent concurrent collaboration, ticket template customization, a visual analytics dashboard, internal department discussions, and an email gateway simulation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
