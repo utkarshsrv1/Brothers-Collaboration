@@ -5,12 +5,17 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { AgentWorkspace } from './components/AgentWorkspace';
 import { CustomerPortal } from './components/CustomerPortal';
 import { EmailSimulator } from './components/EmailSimulator';
+import { LoginScreen } from './components/LoginScreen';
 import { Activity, ShieldAlert, BadgeInfo, Bell, Menu } from 'lucide-react';
 
 function DashboardLayout() {
   const [activeTab, setActiveTab] = useState('client');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { currentUser } = useTickets();
+
+  if (!currentUser) {
+    return <LoginScreen />;
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#020617] text-slate-300 font-sans relative">

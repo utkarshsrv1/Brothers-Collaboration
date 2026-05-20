@@ -6,13 +6,42 @@ export interface UserProfile {
   email: string;
   role: UserRole;
   departmentId?: string;
+  teamId?: string;
   avatar?: string;
+  password?: string;
+  workingHoursStart?: string; // e.g. "09:00"
+  workingHoursEnd?: string; // e.g. "17:00"
+  timezone?: string;
+  status?: 'online' | 'offline' | 'away';
 }
 
 export interface Department {
   id: string;
   name: string;
   description: string;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  departmentId: string;
+  description?: string;
+}
+
+export interface WorkflowState {
+  id: string;
+  name: string;
+  category: 'open' | 'in-progress' | 'on-hold' | 'resolved' | 'closed';
+  color: string; // Tailwind style coloring
+}
+
+export interface CustomReport {
+  id: string;
+  name: string;
+  metricType: 'sla_breach' | 'agent_load' | 'volume' | 'resolution_time';
+  departmentId?: string;
+  timeframe: 'day' | 'week' | 'month';
+  createdAt: string;
 }
 
 export interface SLARule {
@@ -39,7 +68,7 @@ export interface Ticket {
   id: string;
   title: string;
   description: string;
-  status: 'new' | 'investigating' | 'resolving' | 'resolved' | 'closed';
+  status: string; // Dynamic workflow states supported
   priority: 'low' | 'medium' | 'high' | 'urgent';
   departmentId: string;
   

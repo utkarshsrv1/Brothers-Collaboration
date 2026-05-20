@@ -10,7 +10,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, sidebarOpen, setSidebarOpen }) => {
-  const { currentUser, allUsers, switchUser } = useTickets();
+  const { currentUser, allUsers, switchUser, viewDensity, setViewDensity, logoutUser } = useTickets();
 
   const handleSelectTab = (tab: string) => {
     setActiveTab(tab);
@@ -42,53 +42,95 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, sideb
         </button>
       </div>
 
-      {/* Profile Impersonator Console (For Testing Multi-roles live!) */}
-      <div className="p-4 bg-[#111827]/40 border border-slate-800/60 m-4 rounded-xl shadow-inner shrink-0">
-        <label className="block font-mono text-[10px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">
-          CURRENT ACTIVE IDENTITY
-        </label>
-        <div className="relative">
-          <select
-            value={currentUser.id}
-            onChange={(e) => {
-              switchUser(e.target.value);
-              // Auto-adjust tabs context when role switches to improve UX
-              const selectedProfile = allUsers.find(u => u.id === e.target.value);
-              if (selectedProfile) {
-                if (selectedProfile.role === 'admin') setActiveTab('admin');
-                else if (selectedProfile.role === 'agent') setActiveTab('agent');
-                else setActiveTab('client');
-              }
-              setSidebarOpen(false); // Auto close sidebar drawer
-            }}
-            className="w-full bg-[#1e293b]/70 border border-slate-700/60 rounded-lg py-1.5 px-3 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer pr-10 appearance-none font-medium"
-          >
-            {allUsers.map((u) => (
-              <option key={u.id} value={u.id} className="bg-[#0f172a] text-slate-200">
-                {u.avatar} {u.name} ({u.role.toUpperCase()})
-              </option>
-            ))}
-          </select>
-          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 text-xs">
-            ▼
+      {/* Profile & View Configuration Console */}
+      <div className="p-4 bg-[#111827]/40 border border-slate-800/60 m-4 rounded-xl shadow-inner shrink-0 space-y-4">
+        {/* User Identity Display */}
+        {currentUser && (
+          <div className="flex items-center gap-3">
+            <span className="text-xl">{currentUser.avatar || '👤'}</span>
+            <div className="min-w-0 flex-1 text-left">
+              <h4 className="font-bold text-slate-200 text-xs truncate leading-tight font-sans">{currentUser.name}</h4>
+              <p className="text-[10px] text-slate-400 font-mono truncate">{currentUser.email}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {/* View Density Switch */}
+          <div>
+            <label className="block font-mono text-[9px] text-slate-400 uppercase tracking-widest mb-1 font-bold text-left">
+              LAYOUT THEME LEVEL
+            </label>
+            <select
+              value={viewDensity}
+              onChange={(e) => setViewDensity(e.target.value as 'simple' | 'professional')}
+              className="w-full bg-[#1e293b]/70 border border-slate-700/60 rounded-lg py-1 px-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer font-semibold"
+            >
+              <option value="simple" className="bg-[#0f172a]">🌱 Simple / Minimalist Desk</option>
+              <option value="professional" className="bg-[#0f172a]">📊 Professional Operation Desk</option>
+            </select>
+          </div>
+
+          {/* Identity Switcher Dropdown (Helpful for Live Previews!) */}
+          <div>
+            <label className="block font-mono text-[9px] text-slate-400 uppercase tracking-widest mb-1 font-bold text-left">
+              WORKSPACE IMPERSONATOR
+            </label>
+            <div className="relative">
+              <select
+                value={currentUser?.id || ''}
+                onChange={(e) => {
+                  switchUser(e.target.value);
+                  const selectedProfile = allUsers.find(u => u.id === e.target.value);
+                  if (selectedProfile) {
+                    if (selectedProfile.role === 'admin') setActiveTab('admin');
+                    else if (selectedProfile.role === 'agent') setActiveTab('agent');
+                    else setActiveTab('client');
+                  }
+                  setSidebarOpen(false); // Auto close sidebar drawer
+                }}
+                className="w-full bg-[#1e293b]/50 border border-slate-750 rounded-lg py-1.5 px-3 text-sm text-slate-200 focus:outline-none cursor-pointer pr-10 appearance-none font-medium"
+              >
+                {allUsers.map((u) => (
+                  <option key={u.id} value={u.id} className="bg-[#0f172a] text-slate-200">
+                    {u.avatar} {u.name} ({u.role.toUpperCase()})
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 text-xs">
+                ▼
+              </div>
+            </div>
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-2">
-          {currentUser.role === 'admin' && (
-            <span className="inline-flex items-center gap-1.5 text-[10px] bg-emerald-500/10 text-emerald-400 font-mono py-0.5 px-2 rounded border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.05)]">
-              <Shield className="h-3 w-3" /> Full Controller Access
+
+        {/* Access Role Badge & Logout Action */}
+        <div className="pt-2 border-t border-slate-800/50 flex items-center justify-between gap-2">
+          {currentUser?.role === 'admin' && (
+            <span className="inline-flex items-center gap-1.5 text-[9px] bg-emerald-500/10 text-emerald-400 font-mono py-0.5 px-2 rounded border border-emerald-500/20">
+              <Shield className="h-3 w-3" /> Admin
             </span>
           )}
-          {currentUser.role === 'agent' && (
-            <span className="inline-flex items-center gap-1.5 text-[10px] bg-amber-500/10 text-amber-400 font-mono py-0.5 px-2 rounded border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.05)]">
-              <Users className="h-3 w-3" /> Agent Workspace Active
+          {currentUser?.role === 'agent' && (
+            <span className="inline-flex items-center gap-1.5 text-[9px] bg-amber-500/10 text-amber-400 font-mono py-0.5 px-2 rounded border border-amber-500/20 font-black">
+              <Users className="h-3 w-3" /> Agent
             </span>
           )}
-          {currentUser.role === 'user' && (
-            <span className="inline-flex items-center gap-1.5 text-[10px] bg-indigo-500/10 text-indigo-400 font-mono py-0.5 px-2 rounded border border-indigo-500/20">
-              <User className="h-3 w-3" /> End-User Client Portal
+          {currentUser?.role === 'user' && (
+            <span className="inline-flex items-center gap-1.5 text-[9px] bg-indigo-500/10 text-indigo-400 font-mono py-0.5 px-2 rounded border border-indigo-500/20">
+              <User className="h-3 w-3" /> Client
             </span>
           )}
+
+          <button
+            onClick={() => {
+              logoutUser();
+              setSidebarOpen(false);
+            }}
+            className="text-[9px] font-mono text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 font-black py-0.5 px-2 rounded tracking-wide transition-all uppercase cursor-pointer"
+          >
+            Lock Out
+          </button>
         </div>
       </div>
 

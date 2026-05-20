@@ -25,6 +25,11 @@ export const AgentWorkspace: React.FC = () => {
   const [showEscModal, setShowEscModal] = useState(false);
   const [escReason, setEscReason] = useState('');
 
+  // Status update remark modal
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [selectedNextStatus, setSelectedNextStatus] = useState<string>('');
+  const [statusRemark, setStatusRemark] = useState('');
+
   // Dropdown states for interactive assignments change
   const [tempPrimary, setTempPrimary] = useState<string>('');
   const [tempSecondary, setTempSecondary] = useState<string>('');
@@ -75,6 +80,19 @@ export const AgentWorkspace: React.FC = () => {
     return true; // All tickets
   });
 
+  const sortedFilteredTickets = [...filteredTickets].sort((a, b) => {
+    // If one is resolved/closed and other is not, push completed to the bottom
+    const aCompleted = a.status === 'resolved' || a.status === 'closed';
+    const bCompleted = b.status === 'resolved' || b.status === 'closed';
+    if (aCompleted && !bCompleted) return 1;
+    if (!aCompleted && bCompleted) return -1;
+    
+    // Sort unresolved based on resolution SLA time remaining
+    const aTime = new Date(a.slaResolutionDeadline).getTime();
+    const bTime = new Date(b.slaResolutionDeadline).getTime();
+    return aTime - bTime;
+  });
+
   const activeMessages = messages.filter(m => m.ticketId === (activeTicket?.id || ''));
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -97,6 +115,15 @@ export const AgentWorkspace: React.FC = () => {
     triggerManualEscalation(activeTicket.id, escReason);
     setEscReason('');
     setShowEscModal(false);
+  };
+
+  const handleTriggerStatusChange = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeTicket || !selectedNextStatus) return;
+
+    updateTicketStatus(activeTicket.id, selectedNextStatus, statusRemark);
+    setShowStatusModal(false);
+    setStatusRemark('');
   };
 
   // Helper to calculate countdown time remaining
@@ -124,7 +151,7 @@ export const AgentWorkspace: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-white text-xs uppercase tracking-wider font-sans">Support Queues</h3>
             <span className="text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 py-0.5 px-2 rounded-full font-bold">
-              {filteredTickets.length} ACTIVE
+              {sortedFilteredTickets.length} ACTIVE
             </span>
           </div>
 
@@ -147,8 +174,8 @@ export const AgentWorkspace: React.FC = () => {
 
         {/* Tickets Scroll Panel */}
         <div className="flex-1 overflow-y-auto divide-y divide-slate-900 border-none">
-          {filteredTickets.length > 0 ? (
-            filteredTickets.map((ticket) => {
+          {sortedFilteredTickets.length > 0 ? (
+            sortedFilteredTickets.map((ticket) => {
               const isLead = ticket.primaryAgentId === currentUser.id;
               const isBackup = ticket.secondaryAgentId === currentUser.id;
               const hasBreached = ticket.isResolutionBreached || ticket.isResponseBreached;
@@ -167,14 +194,14 @@ export const AgentWorkspace: React.FC = () => {
                   }`}
                 >
                   <div className="flex justify-between items-start mb-1 gap-2">
-                    <span className="text-[10px] font-mono bg-slate-800 border border-slate-750 text-slate-350 px-1.5 py-0.5 rounded font-bold">
+                    <span className="text-[10px] font-mono bg-slate-800 border border-slate-755 text-slate-300 px-1.5 py-0.5 rounded font-bold">
                       {ticket.id}
                     </span>
-                    <span className={`uppercase font-mono text-[9px] px-1.5 py-0.5 rounded font-bold border ${
+                    <span className={`uppercase font-mono text-[9px] px-1.5 py-0.5 rounded font-bold border-l ${
                       ticket.priority === 'urgent' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
                       ticket.priority === 'high' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
                       ticket.priority === 'medium' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                      'bg-slate-850 text-slate-400 border-slate-750'
+                      'bg-slate-800 text-slate-400 border-slate-700'
                     }`}>
                       {ticket.priority}
                     </span>
@@ -185,7 +212,7 @@ export const AgentWorkspace: React.FC = () => {
                     {ticket.description}
                   </p>
 
-                  <div className="flex items-center justify-between mt-1 text-[10px] text-slate-500 font-medium">
+                  <div className="flex items-center justify-between mt-1 text-[10px] text-slate-500 font-medium font-sans">
                     <div className="flex items-center gap-1">
                       {isLead && <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-1 py-0.2 rounded text-[9px] font-bold">Primary</span>}
                       {isBackup && <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 px-1 py-0.2 rounded text-[9px] font-bold">Secondary</span>}
@@ -196,7 +223,7 @@ export const AgentWorkspace: React.FC = () => {
                       {hasBreached ? (
                         <span className="text-red-500">Breached ⚠️</span>
                       ) : (
-                        <span className={activeSLA < 15 * 60 * 1050 ? 'text-amber-400 font-bold animate-pulse' : 'text-slate-500 font-mono text-[9px]'}>
+                        <span className={activeSLA < 15 * 60 * 1000 ? 'text-amber-400 font-bold animate-pulse' : 'text-slate-500 font-mono text-[9px]'}>
                           SLA ACTIVE
                         </span>
                       )}
@@ -206,7 +233,7 @@ export const AgentWorkspace: React.FC = () => {
               );
             })
           ) : (
-            <div className="p-8 text-center text-slate-550 text-xs font-mono">
+            <div className="p-8 text-center text-slate-500 text-xs font-mono">
               No tickets match selection.
             </div>
           )}
@@ -244,12 +271,17 @@ export const AgentWorkspace: React.FC = () => {
               <label className="text-xs font-bold text-slate-400 lowercase font-mono">STATE:</label>
               <select
                 value={activeTicket.status}
-                onChange={(e) => updateTicketStatus(activeTicket.id, e.target.value as Ticket['status'])}
-                className="bg-[#131b2e] border border-slate-800 rounded-lg py-1.5 px-3 text-xs font-bold text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                onChange={(e) => {
+                  setSelectedNextStatus(e.target.value);
+                  setStatusRemark('');
+                  setShowStatusModal(true);
+                }}
+                className="bg-[#131b2e] border border-slate-800 rounded-lg py-1.5 px-3 text-xs font-bold text-slate-202 text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
               >
                 <option value="new" className="bg-[#0f172a]">New</option>
                 <option value="investigating" className="bg-[#0f172a]">Investigating</option>
                 <option value="resolving" className="bg-[#0f172a]">Resolving</option>
+                <option value="on-hold" className="bg-[#0f172a]">On Hold</option>
                 <option value="resolved" className="bg-[#0f172a]">Resolved</option>
                 <option value="closed" className="bg-[#0f172a]">Closed</option>
               </select>
@@ -270,7 +302,7 @@ export const AgentWorkspace: React.FC = () => {
               
               {/* SLA Targets & Countdown timers */}
               <div className="bg-[#0f172a]/40 p-4 rounded-xl border border-slate-800/80">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-[#94a3b8] font-mono mb-3.5 flex items-center gap-1.5">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono mb-3.5 flex items-center gap-1.5">
                   <Clock className="h-4 w-4 text-indigo-400 shrink-0" /> Live Timelines
                 </h4>
                 
@@ -314,7 +346,7 @@ export const AgentWorkspace: React.FC = () => {
                   <UserCheck className="h-4 w-4 text-indigo-400 shrink-0" /> Dual-Agent assignments
                 </h4>
                 
-                <p className="text-[10px] text-slate-450 leading-relaxed">Specify lead operator and parallel backup assistants to collaborate concurrently.</p>
+                <p className="text-[10px] text-slate-450 leading-relaxed font-sans">Specify lead operator and parallel backup assistants to collaborate concurrently.</p>
 
                 <div className="space-y-3 text-xs">
                   <div>
@@ -322,7 +354,7 @@ export const AgentWorkspace: React.FC = () => {
                     <select
                       value={tempPrimary}
                       onChange={(e) => setTempPrimary(e.target.value)}
-                      className="w-full bg-[#131b2e] border border-slate-800 p-2 text-slate-200 text-xs rounded focus:outline-none"
+                      className="w-full bg-[#131b2e] border border-slate-800 p-2 text-slate-205 text-slate-202 text-slate-202 text-xs rounded focus:outline-none cursor-pointer"
                     >
                       <option value="" className="bg-[#0f172a]">-- Unassigned --</option>
                       {allUsers.filter(u => u.role === 'agent').map(ag => (
@@ -338,7 +370,7 @@ export const AgentWorkspace: React.FC = () => {
                     <select
                       value={tempSecondary}
                       onChange={(e) => setTempSecondary(e.target.value)}
-                      className="w-full bg-[#131b2e] border border-slate-800 p-2 text-slate-205 text-slate-202 text-slate-200 text-xs rounded focus:outline-none"
+                      className="w-full bg-[#131b2e] border border-slate-800 p-2 text-slate-205 text-slate-202 text-slate-202 text-xs rounded focus:outline-none cursor-pointer"
                     >
                       <option value="" className="bg-[#0f172a]">-- Unassigned --</option>
                       {allUsers.filter(u => u.role === 'agent').map(ag => (
@@ -361,9 +393,9 @@ export const AgentWorkspace: React.FC = () => {
               {/* Custom Ticket details customFields */}
               <div className="space-y-3">
                 <h4 className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Custom Field Submissions</h4>
-                <div className="divide-y divide-slate-850 text-xs">
+                <div className="divide-y divide-slate-800 text-xs">
                   <div className="py-2 flex items-center justify-between">
-                    <span className="text-slate-450 font-mono text-[9px]">TARGET DEPARTMENT</span>
+                    <span className="text-slate-500 font-mono text-[9px]">TARGET DEPARTMENT</span>
                     <span className="font-bold text-slate-200">
                       {departments.find(d => d.id === activeTicket.departmentId)?.name || 'Default Technical'}
                     </span>
@@ -428,7 +460,7 @@ export const AgentWorkspace: React.FC = () => {
                         }`}
                       >
                         {/* Avatar */}
-                        <div className="h-8 w-8 rounded-full bg-slate-800 border border-slate-700/60 flex items-center justify-center text-xs shrink-0 font-bold text-slate-200">
+                        <div className="h-8 w-8 rounded-full bg-slate-850 border border-slate-700/60 flex items-center justify-center text-xs shrink-0 font-bold text-slate-200">
                           {allUsers.find(u => u.id === msg.senderId)?.avatar || '👤'}
                         </div>
 
@@ -441,17 +473,17 @@ export const AgentWorkspace: React.FC = () => {
                             <span>•</span>
                             <span>{new Date(msg.createdAt).toLocaleTimeString()}</span>
                             {msg.isInternalOnly && (
-                              <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[8px] px-1 rounded font-bold uppercase">
+                              <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[8px] px-1 rounded font-bold uppercase font-sans">
                                 INTERNAL NOTE
                               </span>
                             )}
                           </div>
 
                           <div className={`p-3.5 rounded-2xl text-xs leading-relaxed ${
-                            msg.isInternalOnly ? 'bg-amber-550/10 bg-amber-500/5 text-amber-300 border border-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.08)]' :
+                            msg.isInternalOnly ? 'bg-amber-550/10 text-amber-300 border border-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.08)]' :
                             msg.senderId === currentUser.id
-                              ? 'bg-gradient-to-tr from-indigo-650 to-indigo-600 text-white border-l border-indigo-400 font-medium'
-                              : 'bg-[#0f172a] text-slate-205 text-slate-200 border border-slate-800/80 shadow-sm'
+                              ? 'bg-gradient-to-tr from-indigo-650 to-indigo-600 text-white border-l border-indigo-500'
+                              : 'bg-[#0f172a] text-slate-200 border border-slate-800/80 shadow-sm'
                           }`}>
                             {msg.message}
                           </div>
@@ -484,7 +516,7 @@ export const AgentWorkspace: React.FC = () => {
                 <button
                   type="submit"
                   className={`p-2.5 px-5 rounded-xl text-white font-bold text-xs flex items-center gap-1.5 shrink-0 transition ${
-                    chatType === 'internal' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'
+                    chatType === 'internal' ? 'bg-amber-600 hover:bg-amber-750' : 'bg-indigo-600 hover:bg-indigo-700'
                   }`}
                 >
                   <Send className="h-3.5 w-3.5" /> Send
@@ -504,22 +536,22 @@ export const AgentWorkspace: React.FC = () => {
       {showEscModal && activeTicket && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-[#090d16] border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl animate-scaleUp text-left">
-            <h3 className="text-base font-extrabold text-white mb-1.5 flex items-center gap-1.5 text-red-500">
+            <h3 className="text-base font-extrabold text-white mb-1.5 flex items-center gap-1.5 text-red-500 font-sans">
               <ShieldAlert className="h-5 w-5 text-red-500" /> Trigger Instant SLA Escalation
             </h3>
-            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+            <p className="text-xs text-slate-400 mb-4 leading-relaxed font-sans">
               This process overrides existing operators, assigns configured Senior Specialists specialist Alice, and shoots immediate high priority updates to customer email logs.
             </p>
 
             <form onSubmit={handleTriggerEscalationForm} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-mono font-extrabold text-slate-350 mb-1.5 uppercase tracking-wider">Reason of SLA Breach *</label>
+                <label className="block text-[10px] font-mono font-extrabold text-slate-450 mb-1.5 uppercase tracking-wider">Reason of SLA Breach *</label>
                 <textarea
                   required
                   placeholder="Explain why standard operation limits require manual priority override..."
                   value={escReason}
                   onChange={(e) => setEscReason(e.target.value)}
-                  className="w-full border border-slate-800 text-xs p-2.5 rounded-lg bg-[#131b2ef0] text-slate-200 focus:outline-none placeholder-slate-500"
+                  className="w-full border border-slate-800 text-xs p-2.5 rounded-lg bg-[#131b2ef0] text-slate-205 text-slate-202 text-xs focus:outline-none placeholder-slate-500"
                   rows={4}
                 />
               </div>
@@ -528,7 +560,7 @@ export const AgentWorkspace: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowEscModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700/60 rounded-xl text-slate-300 font-bold text-xs transition-colors"
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700/60 rounded-xl text-slate-350 text-slate-300 font-bold text-xs transition-colors"
                 >
                   Cancel
                 </button>
@@ -537,6 +569,53 @@ export const AgentWorkspace: React.FC = () => {
                   className="px-4 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl text-xs hover:from-red-650 font-bold shadow-[0_4px_12px_-2px_rgba(239,68,68,0.25)]"
                 >
                   Confirm Escalation Setup
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Operator State Remark Modal */}
+      {showStatusModal && activeTicket && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#090d16] border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl animate-scaleUp text-left">
+            <h3 className="text-base font-extrabold text-white mb-1.5 flex items-center gap-1.5 text-indigo-400 font-sans">
+              <CheckSquare className="h-5 w-5 text-indigo-400" /> Apply State Update Remark
+            </h3>
+            <p className="text-xs text-slate-400 mb-4 leading-relaxed font-sans">
+              Confirm your state change transition to <span className="font-bold text-white uppercase font-mono bg-slate-800 px-1.5 py-0.5 rounded">{selectedNextStatus}</span>. Your comments and remarks will instantly reflect on the client portal and email logs.
+            </p>
+
+            <form onSubmit={handleTriggerStatusChange} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-mono font-extrabold text-slate-400 mb-1.5 uppercase tracking-wider">Operator Action Comment / Remark *</label>
+                <textarea
+                  required
+                  placeholder="Provide resolution notes, diagnostics summary, or onhold remarks for the client..."
+                  value={statusRemark}
+                  onChange={(e) => setStatusRemark(e.target.value)}
+                  className="w-full border border-slate-800 text-xs p-2.5 rounded-lg bg-[#131b2ef0] text-slate-205 text-slate-202 text-xs focus:outline-none placeholder-slate-500"
+                  rows={4}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowStatusModal(false);
+                    setStatusRemark('');
+                  }}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700/60 rounded-xl text-slate-350 text-slate-300 font-bold text-xs transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#6366f1] text-white rounded-xl text-xs hover:bg-indigo-650 font-bold shadow-[0_4px_12px_-2px_rgba(99,102,241,0.25)]"
+                >
+                  Apply Status Transition
                 </button>
               </div>
             </form>
